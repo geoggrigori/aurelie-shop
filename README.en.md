@@ -10,10 +10,6 @@
 <a href="README.es.md"><img src="https://img.shields.io/badge/Español-555555?style=for-the-badge" alt="Español"/></a>
 </div>
 
-<h1 align="center">Aurélie</h1>
-<p align="center"><em>Perfume, skincare and makeup storefront, with a working shopping bag</em></p>
-<p align="center"><strong>Filterable catalog → persistent bag → illustrative checkout</strong></p>
-
 <div align="center">
 <img src="https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="nextjs"/>
 <img src="https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="react"/>
