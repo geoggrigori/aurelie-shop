@@ -3,9 +3,8 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
 } from "react";
 import { PRODUCTS, type Product } from "./products";
 
@@ -26,23 +25,52 @@ interface CartCtx {
 
 const Ctx = createContext<CartCtx | null>(null);
 const STORAGE_KEY = "aurelie-cart";
+const EMPTY = "{}";
+
+type Qtys = Record<string, number>; // map of productId -> qty
+
+// The cart lives in localStorage, read through useSyncExternalStore so the
+// server render and first client render both see an empty cart and the saved
+// cart appears right after hydration (also syncs across tabs).
+const listeners = new Set<() => void>();
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function getSnapshot(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEY) ?? EMPTY;
+  } catch {
+    return EMPTY;
+  }
+}
+
+const getServerSnapshot = () => EMPTY;
+
+function parse(raw: string): Qtys {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function setQtys(update: (q: Qtys) => Qtys) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(update(parse(getSnapshot()))));
+  } catch {}
+  listeners.forEach((l) => l());
+}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  // map of productId -> qty
-  const [qtys, setQtys] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setQtys(JSON.parse(raw));
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(qtys));
-    } catch {}
-  }, [qtys]);
+  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const qtys = useMemo(() => parse(raw), [raw]);
 
   const value = useMemo<CartCtx>(() => {
     const items: CartItem[] = Object.entries(qtys)
@@ -65,7 +93,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }),
       setQty: (id, qty) =>
         setQtys((q) => ({ ...q, [id]: Math.max(0, qty) })),
-      clear: () => setQtys({}),
+      clear: () => setQtys(() => ({})),
     };
   }, [qtys]);
 
